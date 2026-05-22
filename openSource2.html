@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historical Registry: Yale School of Forestry Alumni</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&family=Playfair+Display:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+    <style>
+        /* Antique Crimson, Forest Ink, and Parchment Palette */
+        body {
+            background-color: #f4efe2; /* Warm paper hue */
+            color: #2b261f; /* Soft carbon charcoal */
+            font-family: 'Merriweather', Georgia, serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Classical Header Block */
+        header {
+            text-align: center;
+            border-bottom: 3px double #7a2021; /* Antique double line separator */
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            font-family: 'Playfair Display', Times, serif;
+            font-size: 2.4rem;
+            color: #5c1819; /* Deep collegiate madder crimson */
+            margin: 0 0 8px 0;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        header p {
+            font-style: italic;
+            font-size: 1.1rem;
+            color: #554c3e;
+            margin: 0;
+        }
+
+        /* Grid Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 30px;
+        }
+        @media (min-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 320px 1fr;
+            }
+        }
+
+        /* Sidebar - Styled like an archival catalog box */
+        .sidebar {
+            background-color: #fbf8f0;
+            border: 1px solid #d3c4a7;
+            padding: 25px;
+            box-shadow: 2px 2px 8px rgba(40, 30, 15, 0.08);
+            border-radius: 2px;
+        }
+
+        .sidebar h2 {
+            font-family: 'Playfair Display', Times, serif;
+            font-size: 1.4rem;
+            color: #5c1819;
+            margin-top: 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #d3c4a7;
+            padding-bottom: 5px;
+        }
+
+        .filter-group {
+            margin-bottom: 20px;
+        }
+
+        .filter-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #554c3e;
+            margin-bottom: 6px;
+        }
+
+        /* Ledger Style Select Menus */
+        .filter-group select {
+            width: 100%;
+            font-family: 'Merriweather', Georgia, serif;
+            font-size: 0.9rem;
+            padding: 10px;
+            background-color: #fffdf9;
+            border: 1px solid #bdae8f;
+            color: #2b261f;
+            border-radius: 0;
+            outline: none;
+            box-sizing: border-box;
+        }
+        .filter-group select:focus {
+            border-color: #7a2021;
+            background-color: #fff;
+        }
+
+        /* Document-style Legend Panel */
+        .legend-box {
+            margin-top: 30px;
+            background-color: #f5eedc;
+            border: 1px dashed #bdae8f;
+            padding: 15px;
+        }
+
+        .legend-box h3 {
+            font-family: 'Playfair Display', Times, serif;
+            font-size: 1rem;
+            margin-top: 0;
+            margin-bottom: 12px;
+            color: #5c1819;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 0.8rem;
+            margin-bottom: 10px;
+            color: #40382d;
+        }
+
+        .line-preview {
+            width: 35px;
+            height: 4px;
+            margin-right: 12px;
+            display: inline-block;
+        }
+        
+        .node-preview {
+            width: 12px;
+            height: 12px;
+            margin-right: 12px;
+            display: inline-block;
+        }
+
+        /* Map Canvas Window Frame */
+        .map-frame {
+            background-color: #fbf8f0;
+            border: 1px solid #d3c4a7;
+            padding: 10px;
+            box-shadow: 3px 3px 12px rgba(40, 30, 15, 0.08);
+        }
+
+        #map {
+            height: 680px;
+            width: 100%;
+            background-color: #e5dbcd;
+        }
+
+        /* Custom Vintage Text Popups */
+        .leaflet-popup-content-wrapper {
+            background: #fffdf7 !important;
+            color: #2b261f !important;
+            border-radius: 0px !important;
+            border: 1px solid #8a7a5f;
+            font-family: 'Merriweather', Georgia, serif !important;
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.1) !important;
+        }
+        .leaflet-popup-tick {
+            background: #fffdf7 !important;
+        }
+        .popup-title {
+            font-family: 'Playfair Display', Times, serif;
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #5c1819;
+            border-bottom: 1px solid #d3c4a7;
+            padding-bottom: 3px;
+            margin-bottom: 6px;
+        }
+        .popup-tag {
+            font-size: 0.7rem;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            padding: 2px 5px;
+            display: inline-block;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Biographical Records & Geographies of Early Alumni</h1>
+            <p>Yale School of Forestry &bull; Master Historical Mapping Ledger</p>
+        </header>
+
+        <div class="dashboard-grid">
+            
+            <div class="sidebar">
+                <h2>Registry Indexes</h2>
+                
+                <div class="filter-group">
+                    <label for="classFilter">Cohort Year</label>
+                    <select id="classFilter" onchange="handleClassChange()">
+                        <option value="all">-- All Cohorts --</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="nameFilter">Alumnus Name</label>
+                    <select id="nameFilter" onchange="processAndDrawMap()">
+                        <option value="all">-- All Registry Names --</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="movementFilter">Historical Era</label>
+                    <select id="movementFilter" onchange="processAndDrawMap()">
+                        <option value="all">Complete Life Paths</option>
+                        <option value="pre-yale">Pre-Yale Trajectories Only</option>
+                        <option value="post-yale">Post-Yale Career Postings Only</option>
+                    </select>
+                </div>
+
+                <div class="legend-box">
+                    <h3>Cartographic Legend</h3>
+                    <div class="legend-item">
+                        <span class="node-preview" style="background-color: #7a2021; border: 1.5px solid #100000; border-radius: 50%;"></span>
+                        <span>Yale Academic Hub (Graduated)</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="node-preview" style="background-color: #7a2021; border: 1.5px solid #100000; border-radius: 0px;"></span>
+                        <span>Yale Academic Hub (Non-Grad)</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="line-preview" style="border-top: 2px dotted #5f3e8c;"></span>
+                        <span>Transition into New Haven</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="line-preview" style="border-top: 3px solid #1a446c;"></span>
+                        <span>Post-Yale Career Paths</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="line-preview" style="border-top: 2px dashed #b8531d;"></span>
+                        <span>Pre-Yale Trajectories</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="map-frame">
+                <div id="map"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const map = L.map('map').setView([38.0, -35.0], 3);
+
+        // Sepia / Antique Styled Map Base Layer
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_labels_under/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+            className: 'historical-sepia-filter'
+        }).addTo(map);
+
+        const styleNode = document.createElement('style');
+        styleNode.innerHTML = '.historical-sepia-filter { filter: sepia(0.4) hue-rotate(-10deg) contrast(0.95) brightness(0.95); }';
+        document.head.appendChild(styleNode);
+
+        let markerLayer = L.layerGroup().addTo(map);
+        let pathLayer = L.layerGroup().addTo(map);
+        
+        let globalRawRows = [];
+
+        function isValidCoordinate(val) {
+            if (val === undefined || val === null || val === '') return false;
+            let num = parseFloat(val);
+            return !(isNaN(num) || num === 0);
+        }
+
+        // Parse Master Document
+        Papa.parse("master.csv", {
+            download: true,
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                globalRawRows = results.data;
+                populateClassDropdown();
+                populateNameDropdown();
+                processAndDrawMap();
+            }
+        });
+
+        function populateClassDropdown() {
+            const classSelect = document.getElementById('classFilter');
+            let uniqueClasses = [];
+            globalRawRows.forEach(row => {
+                const year = row['Class'];
+                if (year && !uniqueClasses.includes(year)) uniqueClasses.push(year);
+            });
+            uniqueClasses.sort();
+            uniqueClasses.forEach(year => {
+                let opt = document.createElement('option');
+                opt.value = year;
+                opt.innerHTML = `Class of ${year}`;
+                classSelect.appendChild(opt);
+            });
+        }
+
+        function populateNameDropdown() {
+            const nameSelect = document.getElementById('nameFilter');
+            const classFilter = document.getElementById('classFilter').value;
+            nameSelect.innerHTML = '<option value="all">-- All Registry Names --</option>';
+            
+            let uniqueNames = [];
+            globalRawRows.forEach(row => {
+                const name = row['Name'];
+                if (classFilter !== 'all' && row['Class'] !== classFilter) return;
+                if (name && !uniqueNames.includes(name)) uniqueNames.push(name);
+            });
+            uniqueNames.sort();
+            uniqueNames.forEach(name => {
+                let opt = document.createElement('option');
+                opt.value = name;
+                opt.innerHTML = name;
+                nameSelect.appendChild(opt);
+            });
+        }
+
+        function handleClassChange() {
+            populateNameDropdown();
+            processAndDrawMap();
+        }
+
+        function processAndDrawMap() {
+            markerLayer.clearLayers();
+            pathLayer.clearLayers();
+
+            const classFilter = document.getElementById('classFilter').value;
+            const nameFilter = document.getElementById('nameFilter').value;
+            const movementFilter = document.getElementById('movementFilter').value;
+
+            let currentFocusPoints = [];
+
+            globalRawRows.forEach(row => {
+                const name = row['Name'];
+                const rowClass = row['Class'];
+                const graduatedRaw = row['Graduated (Y/N)'];
+                
+                // Evaluate graduation status explicitly
+                const hasGraduated = (graduatedRaw && graduatedRaw.trim().toUpperCase() === 'Y');
+
+                if (classFilter !== 'all' && rowClass !== classFilter) return;
+                if (nameFilter !== 'all' && name !== nameFilter) return;
+
+                // 1. Load Pre-Yale Locations
+                let preYalePoints = [];
+                for (let i = 1; i <= 6; i++) {
+                    let xLon = row[`Pre-Yale Location ${i} X Coordinate`];
+                    let yLat = row[`Pre-Yale Location ${i} Y Coordinate`];
+                    if (isValidCoordinate(xLon) && isValidCoordinate(yLat)) {
+                        preYalePoints.push({
+                            lat: parseFloat(yLat),
+                            lon: parseFloat(xLon),
+                            label: row[`Pre-Yale location ${i}`],
+                            desc: row[`Description of pre-Yale location ${i}`] || "No background notes preserved.",
+                            years: row[`Year(s) at pre-Yale location ${i}`] || "Period Unknown"
+                        });
+                    }
+                }
+
+                // 2. Load Dedicated Explicit Yale Hub Point
+                let yalePoint = null;
+                let yX = row['Yale X'];
+                let yY = row['Yale Y'];
+                if (isValidCoordinate(yX) && isValidCoordinate(yY)) {
+                    yalePoint = {
+                        lat: parseFloat(yY),
+                        lon: parseFloat(yX),
+                        label: row['Yale Location'] || "Yale Forest School",
+                        desc: row['Yale Description'] || "Enrolled in Forestry curriculum.",
+                        years: row['Year(s) at Yale'] || "Enrollment"
+                    };
+                }
+
+                // 3. Load Post-Yale Work Locations
+                let workPoints = [];
+                for (let i = 1; i <= 9; i++) {
+                    let xLon = row[`Work Location ${i} X Coordinate`];
+                    let yLat = row[`Work Location ${i} Y Coordinate`];
+                    if (isValidCoordinate(xLon) && isValidCoordinate(yLat)) {
+                        workPoints.push({
+                            lat: parseFloat(yLat),
+                            lon: parseFloat(xLon),
+                            label: row[`Work Location ${i}`],
+                            desc: row[`Description of work Location ${i}`] || "No operational log descriptive notes.",
+                            years: row[`Year(s) at Location ${i}`] || "Period Unknown"
+                        });
+                    }
+                }
+
+                // 4. DRAW GRAPHIC LINE SEGMENTS
+                if (movementFilter === 'all' || movementFilter === 'pre-yale') {
+                    for (let j = 0; j < preYalePoints.length - 1; j++) {
+                        L.polyline([[preYalePoints[j].lat, preYalePoints[j].lon], [preYalePoints[j+1].lat, preYalePoints[j+1].lon]], {
+                            color: '#b8531d',
+                            weight: 2,
+                            dashArray: '6, 6',
+                            opacity: 0.75
+                        }).addTo(pathLayer);
+                    }
+
+                    if (preYalePoints.length > 0 && yalePoint) {
+                        let lastPre = preYalePoints[preYalePoints.length - 1];
+                        L.polyline([[lastPre.lat, lastPre.lon], [yalePoint.lat, yalePoint.lon]], {
+                            color: '#5f3e8c',
+                            weight: 2,
+                            dashArray: '2, 4',
+                            opacity: 0.8
+                        }).addTo(pathLayer);
+                    }
+                }
+
+                if (movementFilter === 'all' || movementFilter === 'post-yale') {
+                    if (yalePoint && workPoints.length > 0) {
+                        L.polyline([[yalePoint.lat, yalePoint.lon], [workPoints[0].lat, workPoints[0].lon]], {
+                            color: '#1a446c',
+                            weight: 2.5,
+                            opacity: 0.8
+                        }).addTo(pathLayer);
+                    }
+
+                    for (let k = 0; k < workPoints.length - 1; k++) {
+                        L.polyline([[workPoints[k].lat, workPoints[k].lon], [workPoints[k+1].lat, workPoints[k+1].lon]], {
+                            color: '#1a446c',
+                            weight: 2.5,
+                            opacity: 0.8
+                        }).addTo(pathLayer);
+                    }
+                }
+
+                // 5. NODE RENDERING
+                // Pre-Yale stops
+                preYalePoints.forEach(pt => {
+                    currentFocusPoints.push([pt.lat, pt.lon]);
+                    L.circleMarker([pt.lat, pt.lon], {
+                        radius: 4.5,
+                        fillColor: '#b8531d',
+                        color: '#403015',
+                        weight: 1.5,
+                        fillOpacity: 0.85
+                    }).addTo(markerLayer).bindPopup(`
+                        <div class="popup-title">${pt.label}</div>
+                        <span class="popup-tag" style="background-color: #ecd9cb; color: #a04010;">Background Record (${pt.years})</span>
+                        <div style="font-size: 0.8rem; line-height:1.3; color:#221e18;"><strong>Subject:</strong> ${name}<br>${pt.desc}</div>
+                    `);
+                });
+
+                // Dynamic Yale Hub Shapes
+                if (yalePoint) {
+                    currentFocusPoints.push([yalePoint.lat, yalePoint.lon]);
+                    
+                    let hubStyle = {
+                        radius: 7.5,
+                        fillColor: '#7a2021', 
+                        color: '#1a0002',
+                        weight: 2,
+                        fillOpacity: 0.95
+                    };
+
+                    let yaleMarker;
+                    let statusLabel = hasGraduated ? "Alumnus Graduate" : "Non-Graduating Student";
+
+                    if (hasGraduated) {
+                        yaleMarker = L.circleMarker([yalePoint.lat, yalePoint.lon], hubStyle);
+                    } else {
+                        let squareStyle = Object.assign({}, hubStyle, {
+                            html: `<div style="width:13px; height:13px; background-color:#7a2021; border:2px solid #1a0002; transform:translate(-2px, -2px);"></div>`,
+                            className: 'custom-square-marker',
+                            iconSize: [13, 13]
+                        });
+                        yaleMarker = L.marker([yalePoint.lat, yalePoint.lon], { icon: L.divIcon(squareStyle) });
+                    }
+
+                    yaleMarker.addTo(markerLayer).bindPopup(`
+                        <div class="popup-title">${yalePoint.label}</div>
+                        <span class="popup-tag" style="background-color: ${hasGraduated ? '#f7dcd0' : '#e2d3d5'}; color: #7a2021; font-weight: bold;">
+                            ${statusLabel} (${yalePoint.years})
+                        </span>
+                        <div style="font-size: 0.85rem; line-height:1.4; color:#111;">
+                            <strong>Scholar:</strong> ${name} (Class of ${rowClass})<br>
+                            <strong>Archival Status:</strong> ${hasGraduated ? "Successfully completed full degree tracks." : "Attended coursework sessions without continuous graduation registration."}<br>
+                            <strong>Archival Note:</strong> ${yalePoint.desc}
+                        </div>
+                    `);
+                }
+
+                // Career appointments
+                workPoints.forEach(pt => {
+                    currentFocusPoints.push([pt.lat, pt.lon]);
+                    L.circleMarker([pt.lat, pt.lon], {
+                        radius: 5.5,
+                        fillColor: '#1a446c',
+                        color: '#102035',
+                        weight: 1.5,
+                        fillOpacity: 0.9
+                    }).addTo(markerLayer).bindPopup(`
+                        <div class="popup-title">${pt.label}</div>
+                        <span class="popup-tag" style="background-color: #cfe0f0; color: #104070;">Career Station (${pt.years})</span>
+                        <div style="font-size: 0.8rem; line-height:1.3; color:#221e18;"><strong>Subject:</strong> ${name}<br>${pt.desc}</div>
+                    `);
+                });
+            });
+
+            if (nameFilter !== 'all' && currentFocusPoints.length > 0) {
+                map.fitBounds(currentFocusPoints, { padding: [60, 60], maxZoom: 6 });
+            } else if (classFilter !== 'all' && currentFocusPoints.length > 0) {
+                map.fitBounds(currentFocusPoints, { padding: [40, 40] });
+            } else if (nameFilter === 'all') {
+                map.setView([38.0, -35.0], 3);
+            }
+        }
+    </script>
+</body>
+</html>
